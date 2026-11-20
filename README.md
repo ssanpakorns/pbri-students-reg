@@ -22,7 +22,7 @@ npm run dev       # เปิด API (พอร์ต 3001) และหน้�
 GitHub Pages รันได้แค่ไฟล์ static จึงไม่มี Express server — เวอร์ชันบน Pages จะรัน SQLite ในเบราว์เซอร์ด้วย [sql.js](https://sql.js.org)
 โดยใช้ `schema.sql` / `seed.sql` ชุดเดียวกับ server และเก็บข้อมูลไว้ใน localStorage ของแต่ละเบราว์เซอร์ (ไม่แชร์กันระหว่างผู้ใช้)
 
-- Deploy อัตโนมัติทุกครั้งที่ push ขึ้น `main` ผ่าน `.github/workflows/deploy-pages.yml`
+- Deploy อัตโนมัติทุกครั้งที่ push ขึ้น `main`: workflow `.github/workflows/deploy-pages.yml` จะ build แล้ว push ขึ้น branch `gh-pages` (ตั้ง Settings → Pages → Source เป็น branch `gh-pages` / root)
 - Build เองในเครื่อง: `npm run build:pages` (ได้ผลลัพธ์ที่ `client/dist`)
 - Logic ตรวจข้อมูลและคำสั่ง SQL อยู่ที่ `shared/students.js` ใช้ร่วมกันทั้ง server และโหมดเบราว์เซอร์
 
