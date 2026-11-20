@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, STATUS } from './api.js';
+import { api, BROWSER_MODE, STATUS } from './api.js';
 import StudentForm from './components/StudentForm.jsx';
 import StudentTable from './components/StudentTable.jsx';
 import StatsBar from './components/StatsBar.jsx';
@@ -90,6 +90,14 @@ export default function App() {
     }
   };
 
+  const resetData = async () => {
+    if (!confirm('ล้างข้อมูลทั้งหมดในเบราว์เซอร์นี้และกลับไปใช้ข้อมูลตัวอย่าง?')) return;
+    await api.reset();
+    notify('รีเซ็ตข้อมูลเรียบร้อย');
+    if (page !== 1) setPage(1);
+    else load();
+  };
+
   const setFilter = (key, value) => {
     setFilters((f) => ({ ...f, [key]: value }));
     setPage(1);
@@ -119,6 +127,14 @@ export default function App() {
       </div>
 
       <main className="max-w-7xl mx-auto p-4 space-y-4">
+        {BROWSER_MODE && (
+          <div role="alert" className="alert alert-info alert-soft flex flex-col sm:flex-row items-start sm:items-center">
+            <span className="flex-1">
+              <b>โหมดสาธิต:</b> ข้อมูลเก็บในฐานข้อมูล SQLite บนเบราว์เซอร์นี้เท่านั้น (ไม่แชร์กับผู้ใช้อื่น)
+            </span>
+            <button className="btn btn-sm" onClick={resetData}>รีเซ็ตข้อมูลตัวอย่าง</button>
+          </div>
+        )}
         <StatsBar stats={stats} />
 
         <div className="card bg-base-100 shadow-sm">

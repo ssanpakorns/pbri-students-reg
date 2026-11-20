@@ -13,7 +13,7 @@ async function request(path, options = {}) {
   return body;
 }
 
-export const api = {
+const serverApi = {
   faculties: () => request('/faculties'),
   stats: () => request('/stats'),
   listStudents: (params) => request(`/students?${new URLSearchParams(params)}`),
@@ -21,6 +21,10 @@ export const api = {
   updateStudent: (id, data) => request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteStudent: (id) => request(`/students/${id}`, { method: 'DELETE' }),
 };
+
+// VITE_STORAGE=browser (ใช้ตอน build ให้ GitHub Pages) → ใช้ SQLite ในเบราว์เซอร์แทน API
+export const BROWSER_MODE = import.meta.env.VITE_STORAGE === 'browser';
+export const api = BROWSER_MODE ? (await import('./browserApi.js')).browserApi : serverApi;
 
 export const STATUS = {
   studying: { label: 'กำลังศึกษา', badge: 'badge-success' },
