@@ -2,3 +2,8 @@ node_modules
 dist
 server/db/*.db
 server/db/*.db-*
+
+# ไฟล์ข้อมูลจริงมีข้อมูลส่วนบุคคล — ห้าม commit
+*.xlsx
+*.xls
+*.csv

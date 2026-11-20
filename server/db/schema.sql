@@ -1,44 +1,51 @@
--- ฐานข้อมูลนักศึกษา (SQLite)
+-- ฐานข้อมูลนักศึกษา (SQLite) — schema version 2
+-- โครงสร้างอิงตามไฟล์ Excel ข้อมูลรายงานตัวนักศึกษาใหม่
 PRAGMA foreign_keys = ON;
 
--- คณะ
-CREATE TABLE IF NOT EXISTS faculties (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  name        TEXT NOT NULL UNIQUE
-);
-
--- สาขาวิชา
-CREATE TABLE IF NOT EXISTS majors (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  faculty_id  INTEGER NOT NULL REFERENCES faculties(id) ON DELETE RESTRICT,
-  name        TEXT NOT NULL,
-  UNIQUE (faculty_id, name)
-);
-
--- นักศึกษา
 CREATE TABLE IF NOT EXISTS students (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  student_code TEXT NOT NULL UNIQUE,                 -- รหัสนักศึกษา
-  prefix       TEXT NOT NULL CHECK (prefix IN ('นาย','นางสาว','นาง')),
-  first_name   TEXT NOT NULL,
-  last_name    TEXT NOT NULL,
-  gender       TEXT CHECK (gender IN ('M','F','O')),
-  birth_date   TEXT,                                 -- YYYY-MM-DD
-  email        TEXT UNIQUE,
-  phone        TEXT,
-  address      TEXT,
-  major_id     INTEGER REFERENCES majors(id) ON DELETE SET NULL,
-  year_level   INTEGER NOT NULL DEFAULT 1 CHECK (year_level BETWEEN 1 AND 8),
-  gpa          REAL CHECK (gpa IS NULL OR (gpa >= 0 AND gpa <= 4)),
-  status       TEXT NOT NULL DEFAULT 'studying'
-               CHECK (status IN ('studying','on_leave','graduated','withdrawn')),
-  created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-  updated_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_code           TEXT UNIQUE,                     -- รหัสนักศึกษา (ยังไม่มีได้)
+  application_no         TEXT NOT NULL UNIQUE,            -- เลขที่ใบสมัคร
+  national_id            TEXT UNIQUE,                     -- เลขบัตรประชาชน 13 หลัก
+  prefix                 TEXT NOT NULL,                   -- คำนำหน้า
+  first_name             TEXT NOT NULL,                   -- ชื่อ
+  last_name              TEXT NOT NULL,                   -- นามสกุล
+
+  address                TEXT,                            -- ที่อยู่ (บ้านเลขที่ / หมู่)
+  subdistrict            TEXT,                            -- ตำบล
+  district               TEXT,                            -- อำเภอ
+  province               TEXT,                            -- จังหวัด
+  postal_code            TEXT,                            -- รหัสไปรษณีย์
+  phone                  TEXT,                            -- เบอร์โทร
+
+  faculty                TEXT,                            -- คณะ
+  college                TEXT,                            -- วิทยาลัย
+  project                TEXT,                            -- โครงการ
+  curriculum             TEXT,                            -- หลักสูตร
+  admission_round        TEXT,                            -- รอบ
+
+  school_name            TEXT,                            -- ชื่อโรงเรียน
+  school_province        TEXT,                            -- จังหวัดโรงเรียน
+  health_center          TEXT,                            -- รพ.สต. (9 หมอ)
+  health_center_province TEXT,                            -- จังหวัด รพ.สต. (9 หมอ)
+
+  confirm_status         TEXT NOT NULL DEFAULT 'รอยืนยัน'  -- สถานะยืนยันสิทธิ์
+                         CHECK (confirm_status IN ('ยืนยัน', 'รอยืนยัน', 'ไม่ยืนยัน')),
+  status                 TEXT,                            -- สถานะ (เช่น สละสิทธิ์ / ลาออก)
+  notified_date          TEXT,                            -- วันที่แจ้ง (YYYY-MM-DD)
+  returned_date          TEXT,                            -- วันที่กลับมา (YYYY-MM-DD)
+  note                   TEXT,                            -- หมายเหตุ
+  details                TEXT,                            -- รายละเอียดเพิ่มเติม
+
+  created_at             TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at             TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_students_name   ON students(first_name, last_name);
-CREATE INDEX IF NOT EXISTS idx_students_major  ON students(major_id);
-CREATE INDEX IF NOT EXISTS idx_students_status ON students(status);
+CREATE INDEX IF NOT EXISTS idx_students_name     ON students(first_name, last_name);
+CREATE INDEX IF NOT EXISTS idx_students_college  ON students(college);
+CREATE INDEX IF NOT EXISTS idx_students_round    ON students(admission_round);
+CREATE INDEX IF NOT EXISTS idx_students_province ON students(province);
+CREATE INDEX IF NOT EXISTS idx_students_confirm  ON students(confirm_status);
 
 CREATE TRIGGER IF NOT EXISTS trg_students_updated
 AFTER UPDATE ON students

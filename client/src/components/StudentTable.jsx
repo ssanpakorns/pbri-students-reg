@@ -1,4 +1,4 @@
-import { STATUS } from '../api.js';
+import { CONFIRM_BADGE, formatPhone, thaiDate } from '../api.js';
 
 export default function StudentTable({ students, loading, offset, onEdit, onDelete }) {
   return (
@@ -7,40 +7,51 @@ export default function StudentTable({ students, loading, offset, onEdit, onDele
         <thead>
           <tr>
             <th>#</th>
-            <th>รหัสนักศึกษา</th>
             <th>ชื่อ - นามสกุล</th>
-            <th className="hidden md:table-cell">คณะ / สาขา</th>
-            <th className="text-center">ชั้นปี</th>
-            <th className="text-center hidden sm:table-cell">GPA</th>
-            <th>สถานะ</th>
+            <th className="hidden sm:table-cell">เลขที่ใบสมัคร</th>
+            <th className="hidden lg:table-cell">วิทยาลัย / หลักสูตร</th>
+            <th className="hidden xl:table-cell">รอบ</th>
+            <th className="hidden md:table-cell">จังหวัด</th>
+            <th>ยืนยันสิทธิ์</th>
+            <th className="hidden md:table-cell">สถานะ</th>
             <th className="text-right">จัดการ</th>
           </tr>
         </thead>
         <tbody>
           {loading && students.length === 0 && (
-            <tr><td colSpan={8} className="text-center py-10"><span className="loading loading-spinner loading-md" /></td></tr>
+            <tr><td colSpan={9} className="text-center py-10"><span className="loading loading-spinner loading-md" /></td></tr>
           )}
           {!loading && students.length === 0 && (
-            <tr><td colSpan={8} className="text-center py-10 opacity-60">ไม่พบข้อมูลนักศึกษา</td></tr>
+            <tr><td colSpan={9} className="text-center py-10 opacity-60">ไม่พบข้อมูลนักศึกษา</td></tr>
           )}
           {students.map((s, i) => (
             <tr key={s.id} className={loading ? 'opacity-50' : ''}>
               <td className="opacity-60">{offset + i + 1}</td>
-              <td className="font-mono">{s.student_code}</td>
               <td>
-                <div className="font-medium">{s.prefix}{s.first_name} {s.last_name}</div>
-                <div className="text-xs opacity-60">{s.email || '-'}</div>
+                <div className="font-medium whitespace-nowrap">{s.prefix}{s.first_name} {s.last_name}</div>
+                <div className="text-xs opacity-60 whitespace-nowrap">
+                  {s.student_code ? `รหัส ${s.student_code} · ` : ''}{formatPhone(s.phone)}
+                </div>
+              </td>
+              <td className="hidden sm:table-cell font-mono text-sm">{s.application_no}</td>
+              <td className="hidden lg:table-cell">
+                <div className="text-sm">{s.college || '-'}</div>
+                <div className="text-xs opacity-60">{s.curriculum || ''}</div>
+              </td>
+              <td className="hidden xl:table-cell text-sm">{s.admission_round || '-'}</td>
+              <td className="hidden md:table-cell text-sm">{s.province || '-'}</td>
+              <td>
+                <span className={`badge badge-soft whitespace-nowrap ${CONFIRM_BADGE[s.confirm_status] || ''}`}>
+                  {s.confirm_status}
+                </span>
               </td>
               <td className="hidden md:table-cell">
-                <div>{s.major_name || '-'}</div>
-                <div className="text-xs opacity-60">{s.faculty_name || ''}</div>
-              </td>
-              <td className="text-center">{s.year_level}</td>
-              <td className="text-center hidden sm:table-cell">{s.gpa != null ? s.gpa.toFixed(2) : '-'}</td>
-              <td>
-                <span className={`badge badge-soft whitespace-nowrap ${STATUS[s.status]?.badge || ''}`}>
-                  {STATUS[s.status]?.label || s.status}
-                </span>
+                {s.status ? (
+                  <div>
+                    <span className="badge badge-soft badge-neutral whitespace-nowrap">{s.status}</span>
+                    {s.notified_date && <div className="text-xs opacity-60 mt-1 whitespace-nowrap">แจ้ง {thaiDate(s.notified_date)}</div>}
+                  </div>
+                ) : <span className="opacity-40">-</span>}
               </td>
               <td>
                 <div className="flex justify-end gap-1">

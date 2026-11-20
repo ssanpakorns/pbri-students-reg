@@ -13,10 +13,14 @@ async function request(path, options = {}) {
   return body;
 }
 
+const qs = (params) => new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v != null));
+
 const serverApi = {
-  faculties: () => request('/faculties'),
+  options: () => request('/options'),
   stats: () => request('/stats'),
-  listStudents: (params) => request(`/students?${new URLSearchParams(params)}`),
+  listStudents: (params) => request(`/students?${qs(params)}`),
+  exportStudents: (params) => request(`/students/export?${qs(params)}`),
+  importStudents: (rows) => request('/students/import', { method: 'POST', body: JSON.stringify({ rows }) }),
   createStudent: (data) => request('/students', { method: 'POST', body: JSON.stringify(data) }),
   updateStudent: (id, data) => request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteStudent: (id) => request(`/students/${id}`, { method: 'DELETE' }),
@@ -26,9 +30,20 @@ const serverApi = {
 export const BROWSER_MODE = import.meta.env.VITE_STORAGE === 'browser';
 export const api = BROWSER_MODE ? (await import('./browserApi.js')).browserApi : serverApi;
 
-export const STATUS = {
-  studying: { label: 'กำลังศึกษา', badge: 'badge-success' },
-  on_leave: { label: 'พักการศึกษา', badge: 'badge-warning' },
-  graduated: { label: 'สำเร็จการศึกษา', badge: 'badge-info' },
-  withdrawn: { label: 'พ้นสภาพ', badge: 'badge-error' },
+export const CONFIRM_BADGE = {
+  'ยืนยัน': 'badge-success',
+  'รอยืนยัน': 'badge-warning',
+  'ไม่ยืนยัน': 'badge-error',
 };
+
+const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+export function thaiDate(iso) {
+  const m = iso?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso || '-';
+  return `${Number(m[3])} ${TH_MONTHS[Number(m[2]) - 1]} ${Number(m[1]) + 543}`;
+}
+
+export function formatPhone(p) {
+  if (!p) return '-';
+  return p.length === 10 ? `${p.slice(0, 3)}-${p.slice(3, 6)}-${p.slice(6)}` : p;
+}

@@ -13,7 +13,9 @@
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "sql.js": "^1.17.0"
+    "read-excel-file": "9.3.13",
+    "sql.js": "^1.17.0",
+    "write-excel-file": "4.1.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",

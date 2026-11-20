@@ -8,7 +8,7 @@ const repo = createRepo(db);
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' })); // การนำเข้า Excel ส่งข้อมูลมาทีละหลายพันแถว
 
 // ห่อ handler ให้แปลง HttpError เป็น response
 const handle = (fn, okStatus = 200) => (req, res) => {
@@ -25,9 +25,11 @@ const handle = (fn, okStatus = 200) => (req, res) => {
   }
 };
 
-app.get('/api/faculties', handle(() => repo.faculties()));
+app.get('/api/options', handle(() => repo.options()));
 app.get('/api/stats', handle(() => repo.stats()));
 app.get('/api/students', handle((req) => repo.list(req.query)));
+app.get('/api/students/export', handle((req) => repo.exportRows(req.query)));
+app.post('/api/students/import', handle((req) => repo.importRows(req.body?.rows)));
 app.get('/api/students/:id', handle((req) => repo.get(req.params.id)));
 app.post('/api/students', handle((req) => repo.create(req.body), 201));
 app.put('/api/students/:id', handle((req) => repo.update(req.params.id, req.body)));

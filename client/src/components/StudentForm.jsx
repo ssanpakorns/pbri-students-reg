@@ -1,42 +1,36 @@
-import { useMemo, useState } from 'react';
-import { STATUS } from '../api.js';
+import { useState } from 'react';
+import { CONFIRM_STATUSES, FIELDS, PREFIXES, STATUS_SUGGESTIONS } from '../../../shared/students.js';
 
-const EMPTY = {
-  student_code: '', prefix: 'นาย', first_name: '', last_name: '', gender: '',
-  birth_date: '', email: '', phone: '', address: '', faculty_id: '', major_id: '',
-  year_level: 1, gpa: '', status: 'studying',
-};
+const EMPTY = Object.fromEntries(FIELDS.map((f) => [f, '']));
+EMPTY.prefix = 'นางสาว';
+EMPTY.confirm_status = 'รอยืนยัน';
 
 function toForm(s) {
   const f = { ...EMPTY };
-  for (const k of Object.keys(EMPTY)) if (s[k] != null) f[k] = String(s[k]);
+  for (const k of FIELDS) if (s[k] != null) f[k] = String(s[k]);
   return f;
 }
 
-function Field({ label, error, children, className = '' }) {
+// เขียนชื่อคลาสเต็มเพื่อให้ Tailwind ตรวจเจอ
+const ERROR_CLASS = { input: 'input-error', select: 'select-error', textarea: 'textarea-error' };
+
+function Section({ title, children }) {
   return (
-    <fieldset className={`fieldset py-0 ${className}`}>
-      <legend className="fieldset-legend">{label}</legend>
+    <>
+      <div className="sm:col-span-6 divider divider-start text-sm font-semibold opacity-80 mt-3 mb-0">{title}</div>
       {children}
-      {error && <p className="label text-error">{error}</p>}
-    </fieldset>
+    </>
   );
 }
 
-export default function StudentForm({ initial, faculties, onSubmit, onCancel }) {
+export default function StudentForm({ initial, options, onSubmit, onCancel }) {
   const [form, setForm] = useState(() => toForm(initial));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const majors = useMemo(
-    () => faculties.find((f) => String(f.id) === form.faculty_id)?.majors || [],
-    [faculties, form.faculty_id],
-  );
-
   const set = (key) => (e) => {
-    const value = e.target.value;
-    setForm((f) => ({ ...f, [key]: value, ...(key === 'faculty_id' ? { major_id: '' } : {}) }));
+    setForm((f) => ({ ...f, [key]: e.target.value }));
     setErrors((er) => ({ ...er, [key]: undefined }));
   };
 
@@ -45,86 +39,102 @@ export default function StudentForm({ initial, faculties, onSubmit, onCancel }) 
     setSaving(true);
     setFormError('');
     try {
-      const { faculty_id, ...data } = form;
-      await onSubmit(data);
+      await onSubmit(form);
     } catch (err) {
       setErrors(err.errors || {});
-      if (!err.errors || !Object.keys(err.errors).length) setFormError(err.message);
+      setFormError(err.errors && Object.keys(err.errors).length ? 'กรุณาตรวจสอบข้อมูลที่ไฮไลต์' : err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  // เขียนชื่อคลาสเต็มเพื่อให้ Tailwind ตรวจเจอ
-  const ERROR_CLASS = { input: 'input-error', select: 'select-error' };
-  const cls = (key, base) => `${base} w-full ${errors[key] ? ERROR_CLASS[base] : ''}`;
+  // ช่องกรอกทั่วไป: list = ชื่อ datalist สำหรับตัวเลือกที่เคยกรอก
+  const field = (key, label, { span = 3, type = 'text', list, placeholder, inputMode, el = 'input' } = {}) => (
+    <fieldset className={`fieldset py-0 sm:col-span-${span}`} key={key}>
+      <legend className="fieldset-legend">{label}</legend>
+      {el === 'textarea' ? (
+        <textarea className={`textarea w-full ${errors[key] ? ERROR_CLASS.textarea : ''}`} rows={2} value={form[key]} onChange={set(key)} />
+      ) : (
+        <input
+          type={type}
+          className={`input w-full ${errors[key] ? ERROR_CLASS.input : ''}`}
+          value={form[key]}
+          onChange={set(key)}
+          list={list}
+          placeholder={placeholder}
+          inputMode={inputMode}
+        />
+      )}
+      {errors[key] && <p className="label text-error whitespace-normal">{errors[key]}</p>}
+    </fieldset>
+  );
+
+  const datalist = (id, values = []) => (
+    <datalist id={id}>{values.map((v) => <option key={v} value={v} />)}</datalist>
+  );
 
   return (
     <form onSubmit={submit} noValidate>
-      {formError && <div className="alert alert-error mb-3"><span>{formError}</span></div>}
+      {formError && <div className="alert alert-error alert-soft mb-3"><span>{formError}</span></div>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-6 gap-x-4 gap-y-1">
-        <Field label="รหัสนักศึกษา *" error={errors.student_code} className="sm:col-span-2">
-          <input className={cls('student_code', 'input')} inputMode="numeric" value={form.student_code} onChange={set('student_code')} placeholder="เช่น 6601001" />
-        </Field>
-        <Field label="คำนำหน้า *" error={errors.prefix} className="sm:col-span-1">
-          <select className={cls('prefix', 'select')} value={form.prefix} onChange={set('prefix')}>
-            <option>นาย</option><option>นางสาว</option><option>นาง</option>
-          </select>
-        </Field>
-        <Field label="เพศ" error={errors.gender} className="sm:col-span-1">
-          <select className={cls('gender', 'select')} value={form.gender} onChange={set('gender')}>
-            <option value="">-</option><option value="M">ชาย</option><option value="F">หญิง</option><option value="O">อื่น ๆ</option>
-          </select>
-        </Field>
-        <Field label="วันเกิด" error={errors.birth_date} className="sm:col-span-2">
-          <input type="date" className={cls('birth_date', 'input')} value={form.birth_date} onChange={set('birth_date')} />
-        </Field>
+      {datalist('dl-faculty', options.faculty)}
+      {datalist('dl-college', options.college)}
+      {datalist('dl-project', options.project)}
+      {datalist('dl-curriculum', options.curriculum)}
+      {datalist('dl-round', options.admission_round)}
+      {datalist('dl-province', options.province)}
+      {datalist('dl-status', [...new Set([...STATUS_SUGGESTIONS, ...(options.status || [])])])}
 
-        <Field label="ชื่อ *" error={errors.first_name} className="sm:col-span-3">
-          <input className={cls('first_name', 'input')} value={form.first_name} onChange={set('first_name')} />
-        </Field>
-        <Field label="นามสกุล *" error={errors.last_name} className="sm:col-span-3">
-          <input className={cls('last_name', 'input')} value={form.last_name} onChange={set('last_name')} />
-        </Field>
+      {/* sm:col-span-1 sm:col-span-2 sm:col-span-3 sm:col-span-4 sm:col-span-6 — ให้ Tailwind สร้างคลาสที่ใช้แบบ dynamic */}
+      <div className="grid grid-cols-1 sm:grid-cols-6 gap-x-4 gap-y-1 [&>*]:min-w-0">
+        <Section title="ข้อมูลส่วนตัว">
+          {field('application_no', 'เลขที่ใบสมัคร *', { span: 2, inputMode: 'numeric' })}
+          {field('student_code', 'รหัสนักศึกษา', { span: 2, placeholder: 'ยังไม่มีได้' })}
+          {field('national_id', 'เลขบัตรประชาชน', { span: 2, inputMode: 'numeric', placeholder: '13 หลัก' })}
+          <fieldset className="fieldset py-0 sm:col-span-2">
+            <legend className="fieldset-legend">คำนำหน้า *</legend>
+            <select className={`select w-full ${errors.prefix ? ERROR_CLASS.select : ''}`} value={form.prefix} onChange={set('prefix')}>
+              {[...new Set([...PREFIXES, form.prefix].filter(Boolean))].map((p) => <option key={p}>{p}</option>)}
+            </select>
+          </fieldset>
+          {field('first_name', 'ชื่อ *', { span: 2 })}
+          {field('last_name', 'นามสกุล *', { span: 2 })}
+          {field('phone', 'เบอร์โทร', { span: 2, type: 'tel', placeholder: '0812345678' })}
+        </Section>
 
-        <Field label="อีเมล" error={errors.email} className="sm:col-span-3">
-          <input type="email" className={cls('email', 'input')} value={form.email} onChange={set('email')} placeholder="name@example.com" />
-        </Field>
-        <Field label="เบอร์โทรศัพท์" error={errors.phone} className="sm:col-span-3">
-          <input type="tel" className={cls('phone', 'input')} value={form.phone} onChange={set('phone')} placeholder="0812345678" />
-        </Field>
+        <Section title="ที่อยู่">
+          {field('address', 'ที่อยู่ (บ้านเลขที่ / หมู่)', { span: 6 })}
+          {field('subdistrict', 'ตำบล', { span: 2 })}
+          {field('district', 'อำเภอ', { span: 2 })}
+          {field('province', 'จังหวัด', { span: 1, list: 'dl-province' })}
+          {field('postal_code', 'รหัสไปรษณีย์', { span: 1, inputMode: 'numeric' })}
+        </Section>
 
-        <Field label="คณะ" className="sm:col-span-3">
-          <select className="select w-full" value={form.faculty_id} onChange={set('faculty_id')}>
-            <option value="">- เลือกคณะ -</option>
-            {faculties.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </Field>
-        <Field label="สาขาวิชา" error={errors.major_id} className="sm:col-span-3">
-          <select className={cls('major_id', 'select')} value={form.major_id} onChange={set('major_id')} disabled={!form.faculty_id}>
-            <option value="">- เลือกสาขา -</option>
-            {majors.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </Field>
+        <Section title="ข้อมูลการรับเข้า">
+          {field('faculty', 'คณะ', { span: 3, list: 'dl-faculty' })}
+          {field('college', 'วิทยาลัย', { span: 3, list: 'dl-college' })}
+          {field('project', 'โครงการ', { span: 6, list: 'dl-project' })}
+          {field('curriculum', 'หลักสูตร', { span: 3, list: 'dl-curriculum' })}
+          {field('admission_round', 'รอบ', { span: 3, list: 'dl-round' })}
+          {field('school_name', 'ชื่อโรงเรียน', { span: 4 })}
+          {field('school_province', 'จังหวัดโรงเรียน', { span: 2, list: 'dl-province' })}
+          {field('health_center', 'รพ.สต. (9 หมอ)', { span: 4 })}
+          {field('health_center_province', 'จังหวัด รพ.สต.', { span: 2, list: 'dl-province' })}
+        </Section>
 
-        <Field label="ชั้นปี *" error={errors.year_level} className="sm:col-span-2">
-          <select className={cls('year_level', 'select')} value={form.year_level} onChange={set('year_level')}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((y) => <option key={y} value={y}>ปี {y}</option>)}
-          </select>
-        </Field>
-        <Field label="เกรดเฉลี่ย (GPA)" error={errors.gpa} className="sm:col-span-2">
-          <input type="number" step="0.01" min="0" max="4" className={cls('gpa', 'input')} value={form.gpa} onChange={set('gpa')} placeholder="0.00 - 4.00" />
-        </Field>
-        <Field label="สถานะ *" error={errors.status} className="sm:col-span-2">
-          <select className={cls('status', 'select')} value={form.status} onChange={set('status')}>
-            {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-        </Field>
-
-        <Field label="ที่อยู่" className="sm:col-span-6">
-          <textarea className="textarea w-full" rows={2} value={form.address} onChange={set('address')} />
-        </Field>
+        <Section title="สถานะ">
+          <fieldset className="fieldset py-0 sm:col-span-3">
+            <legend className="fieldset-legend">สถานะยืนยันสิทธิ์ *</legend>
+            <select className={`select w-full ${errors.confirm_status ? ERROR_CLASS.select : ''}`} value={form.confirm_status} onChange={set('confirm_status')}>
+              {CONFIRM_STATUSES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </fieldset>
+          {field('status', 'สถานะ', { span: 3, list: 'dl-status', placeholder: 'เว้นว่าง = ปกติ' })}
+          {field('notified_date', 'วันที่แจ้ง', { span: 3, type: 'date' })}
+          {field('returned_date', 'วันที่กลับมา', { span: 3, type: 'date' })}
+          {field('note', 'หมายเหตุ', { span: 6 })}
+          {field('details', 'รายละเอียดเพิ่มเติม', { span: 6, el: 'textarea' })}
+        </Section>
       </div>
 
       <div className="modal-action">

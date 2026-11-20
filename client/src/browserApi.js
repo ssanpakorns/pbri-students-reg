@@ -1,32 +1,47 @@
 // โหมดเบราว์เซอร์: รัน SQLite ในเบราว์เซอร์ด้วย sql.js (WebAssembly)
-// ใช้ schema.sql / seed.sql ชุดเดียวกับ server และเก็บไฟล์ฐานข้อมูลไว้ใน localStorage
+// ใช้ schema.sql / seed.sql ชุดเดียวกับ server และเก็บไฟล์ฐานข้อมูลไว้ใน IndexedDB ของเบราว์เซอร์
 import initSqlJs from 'sql.js';
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import schemaSql from '../../server/db/schema.sql?raw';
 import seedSql from '../../server/db/seed.sql?raw';
-import { createRepo } from '../../shared/students.js';
+import { createRepo, migrate, SCHEMA_VERSION } from '../../shared/students.js';
 
-const STORAGE_KEY = 'pbri-students-db';
+// ---------- ที่เก็บไฟล์ฐานข้อมูล (IndexedDB) ----------
+const IDB_NAME = 'pbri-students';
+const IDB_STORE = 'files';
+const IDB_KEY = 'students.db';
 
-function toBase64(bytes) {
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
+function idb(mode, fn) {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open(IDB_NAME, 1);
+    open.onupgradeneeded = () => open.result.createObjectStore(IDB_STORE);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const tx = open.result.transaction(IDB_STORE, mode);
+      const req = fn(tx.objectStore(IDB_STORE));
+      tx.oncomplete = () => { open.result.close(); resolve(req.result); };
+      tx.onerror = () => { open.result.close(); reject(tx.error); };
+    };
+  });
 }
-function fromBase64(b64) {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-}
 
-function loadSaved() {
+async function loadSaved() {
   try {
-    const b64 = localStorage.getItem(STORAGE_KEY);
-    return b64 ? fromBase64(b64) : null;
+    return (await idb('readonly', (s) => s.get(IDB_KEY))) ?? null;
   } catch {
-    return null;
+    return null; // IndexedDB ถูกปิด (เช่น private mode บางเบราว์เซอร์) → เริ่มจากข้อมูลตัวอย่าง
   }
 }
 
-// ทำให้ sql.js มี interface แบบเดียวกับ node:sqlite (prepare().all/get/run)
+async function save(bytes) {
+  try {
+    await idb('readwrite', (s) => s.put(bytes, IDB_KEY));
+  } catch {
+    // บันทึกไม่ได้ — ข้อมูลยังใช้ได้จนกว่าจะปิดหน้า
+  }
+}
+
+// ---------- ทำให้ sql.js มี interface แบบเดียวกับ node:sqlite ----------
 function adapt(sqlDb) {
   const bindParams = (params) => {
     if (!params) return undefined;
@@ -35,6 +50,7 @@ function adapt(sqlDb) {
     return out;
   };
   return {
+    exec: (sql) => sqlDb.exec(sql),
     prepare(sql) {
       const all = (params) => {
         const stmt = sqlDb.prepare(sql);
@@ -65,32 +81,38 @@ function adapt(sqlDb) {
 let state; // Promise<{ sqlDb, repo }>
 
 function open(fresh = false) {
-  state = initSqlJs({ locateFile: () => wasmUrl }).then((SQL) => {
-    const saved = fresh ? null : loadSaved();
-    const sqlDb = saved ? new SQL.Database(saved) : new SQL.Database();
-    sqlDb.exec(schemaSql);
-    if (!saved) sqlDb.exec(seedSql);
+  state = Promise.all([initSqlJs({ locateFile: () => wasmUrl }), fresh ? null : loadSaved()]).then(([SQL, saved]) => {
+    let sqlDb = saved ? new SQL.Database(saved) : null;
+    // ไฟล์ที่บันทึกไว้เป็น schema เก่า → เริ่มใหม่ด้วยข้อมูลตัวอย่าง (โหมดสาธิต)
+    if (sqlDb && sqlDb.exec('PRAGMA user_version')[0].values[0][0] < SCHEMA_VERSION) {
+      sqlDb.close();
+      sqlDb = null;
+    }
+    const isNew = !sqlDb;
+    sqlDb ??= new SQL.Database();
+    const db = adapt(sqlDb);
+    migrate(db, schemaSql);
+    if (isNew) sqlDb.exec(seedSql);
     sqlDb.exec('PRAGMA foreign_keys = ON;');
-    return { sqlDb, repo: createRepo(adapt(sqlDb)) };
+    const s = { sqlDb, repo: createRepo(db) };
+    if (isNew) persist(s);
+    return s;
   });
-  if (fresh) state.then(persist);
+  try { localStorage.removeItem('pbri-students-db'); } catch { /* ที่เก็บเดิมของเวอร์ชันก่อน */ }
   return state;
 }
 
 function persist({ sqlDb }) {
-  try {
-    localStorage.setItem(STORAGE_KEY, toBase64(sqlDb.export()));
-  } catch {
-    // localStorage อาจถูกปิดหรือเต็ม — ข้อมูลยังใช้ได้จนกว่าจะปิดหน้า
-  }
+  const bytes = sqlDb.export();
   sqlDb.exec('PRAGMA foreign_keys = ON;'); // export() เปิดฐานข้อมูลใหม่ ต้องตั้งค่าซ้ำ
+  return save(bytes);
 }
 
 async function call(fn, write = false) {
   const s = await (state || open());
   try {
     const result = fn(s.repo);
-    if (write) persist(s);
+    if (write) await persist(s);
     return result ?? null;
   } catch (err) {
     err.errors ||= {};
@@ -99,9 +121,11 @@ async function call(fn, write = false) {
 }
 
 export const browserApi = {
-  faculties: () => call((r) => r.faculties()),
+  options: () => call((r) => r.options()),
   stats: () => call((r) => r.stats()),
   listStudents: (params) => call((r) => r.list(params)),
+  exportStudents: (params) => call((r) => r.exportRows(params)),
+  importStudents: (rows) => call((r) => r.importRows(rows), true),
   createStudent: (data) => call((r) => r.create(data), true),
   updateStudent: (id, data) => call((r) => r.update(id, data), true),
   deleteStudent: (id) => call((r) => r.remove(id), true),
