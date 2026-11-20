@@ -14,7 +14,7 @@ export default function StudentTable({ students, loading, offset, onEdit, onDele
             <th className="hidden md:table-cell">จังหวัด</th>
             <th>ยืนยันสิทธิ์</th>
             <th className="hidden md:table-cell">สถานะ</th>
-            <th className="text-right">จัดการ</th>
+            {onEdit && <th className="text-right">จัดการ</th>}
           </tr>
         </thead>
         <tbody>
@@ -53,12 +53,14 @@ export default function StudentTable({ students, loading, offset, onEdit, onDele
                   </div>
                 ) : <span className="opacity-40">-</span>}
               </td>
-              <td>
-                <div className="flex justify-end gap-1">
-                  <button className="btn btn-sm btn-ghost" onClick={() => onEdit(s)}>แก้ไข</button>
-                  <button className="btn btn-sm btn-ghost text-error" onClick={() => onDelete(s)}>ลบ</button>
-                </div>
-              </td>
+              {onEdit && (
+                <td>
+                  <div className="flex justify-end gap-1">
+                    <button className="btn btn-sm btn-ghost" onClick={() => onEdit(s)}>แก้ไข</button>
+                    <button className="btn btn-sm btn-ghost text-error" onClick={() => onDelete(s)}>ลบ</button>
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

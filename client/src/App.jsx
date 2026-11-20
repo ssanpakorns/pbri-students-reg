@@ -6,11 +6,32 @@ import StudentForm from './components/StudentForm.jsx';
 import StudentTable from './components/StudentTable.jsx';
 import StatsBar from './components/StatsBar.jsx';
 import ImportDialog from './components/ImportDialog.jsx';
+import Login from './components/Login.jsx';
+
+const ROLE_LABEL = { admin: 'ผู้ดูแลระบบ', editor: 'เจ้าหน้าที่', viewer: 'ดูข้อมูลอย่างเดียว' };
 
 const PAGE_SIZE = 20;
 const NO_FILTERS = { q: '', college: '', admission_round: '', province: '', confirm_status: '', status: '' };
 
 export default function App() {
+  const [user, setUser] = useState(undefined); // undefined = กำลังตรวจสอบ, null = ต้อง login
+
+  useEffect(() => {
+    api.me().then(setUser).catch(() => setUser(null));
+    const onAuthRequired = () => setUser(null);
+    window.addEventListener('auth-required', onAuthRequired);
+    return () => window.removeEventListener('auth-required', onAuthRequired);
+  }, []);
+
+  if (user === undefined) {
+    return <div className="min-h-screen bg-base-200 flex items-center justify-center"><span className="loading loading-spinner loading-lg" /></div>;
+  }
+  if (user === null) return <Login onLogin={setUser} />;
+  return <Dashboard user={user} onLogout={async () => { await api.logout(); setUser(null); }} />;
+}
+
+function Dashboard({ user, onLogout }) {
+  const canEdit = user.role !== 'viewer';
   const [options, setOptions] = useState({});
   const [stats, setStats] = useState(null);
   const [result, setResult] = useState({ data: [], total: 0, page: 1 });
@@ -167,6 +188,15 @@ export default function App() {
             <div className="text-xs opacity-60">ข้อมูลรายงานตัวนักศึกษาใหม่</div>
           </div>
         </div>
+        {!user.noAuth && (
+          <div className="flex items-center gap-2 mr-1">
+            <div className="text-right hidden sm:block">
+              <div className="text-sm font-medium leading-tight">{user.display_name}</div>
+              <div className="text-xs opacity-60">{ROLE_LABEL[user.role] || user.role}</div>
+            </div>
+            <button className="btn btn-sm btn-ghost" onClick={onLogout}>ออกจากระบบ</button>
+          </div>
+        )}
         <label className="swap swap-rotate btn btn-ghost btn-circle" title="สลับธีม">
           <input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} />
           <span className="swap-off text-xl">☀️</span>
@@ -197,14 +227,16 @@ export default function App() {
                   onChange={(e) => setFilter('q', e.target.value)}
                 />
               </label>
-              <div className="flex gap-2 lg:ml-auto">
-                <button className="btn flex-1 lg:flex-none" onClick={openImport}>นำเข้า Excel</button>
-                <button className="btn flex-1 lg:flex-none" onClick={handleExport} disabled={exporting}>
-                  {exporting && <span className="loading loading-spinner loading-sm" />}
-                  ส่งออก Excel
-                </button>
-                <button className="btn btn-primary flex-1 lg:flex-none" onClick={() => openForm(null)}>+ เพิ่มนักศึกษา</button>
-              </div>
+              {canEdit && (
+                <div className="flex gap-2 lg:ml-auto">
+                  <button className="btn flex-1 lg:flex-none" onClick={openImport}>นำเข้า Excel</button>
+                  <button className="btn flex-1 lg:flex-none" onClick={handleExport} disabled={exporting}>
+                    {exporting && <span className="loading loading-spinner loading-sm" />}
+                    ส่งออก Excel
+                  </button>
+                  <button className="btn btn-primary flex-1 lg:flex-none" onClick={() => openForm(null)}>+ เพิ่มนักศึกษา</button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
@@ -226,14 +258,14 @@ export default function App() {
               students={result.data}
               loading={loading}
               offset={(page - 1) * PAGE_SIZE}
-              onEdit={openForm}
-              onDelete={askDelete}
+              onEdit={canEdit ? openForm : null}
+              onDelete={canEdit ? askDelete : null}
             />
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm">
               <span className="opacity-70">
                 {hasFilters ? 'ตรงตามตัวกรอง' : 'ทั้งหมด'} {result.total.toLocaleString('th-TH')} รายการ
-                {hasFilters && ' (ส่งออก Excel จะใช้ตัวกรองนี้)'}
+                {hasFilters && canEdit && ' (ส่งออก Excel จะใช้ตัวกรองนี้)'}
               </span>
               <div className="join">
                 <button className="join-item btn btn-sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>«</button>

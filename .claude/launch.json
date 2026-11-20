@@ -4,15 +4,38 @@
     {
       "name": "students-app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "pages-preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview:pages", "-w", "client", "--", "--port", "4173", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "preview:pages",
+        "-w",
+        "client",
+        "--",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
       "port": 4173,
       "url": "http://localhost:4173"
+    },
+    {
+      "name": "app-php-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:php",
+        "-w",
+        "client"
+      ],
+      "port": 5174
     }
   ]
 }

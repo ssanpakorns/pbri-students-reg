@@ -293,22 +293,24 @@ export function createRepo(db) {
       if (!r.changes) throw notFound();
     },
 
-    // นำเข้าหลายแถว: มีเลขที่ใบสมัครอยู่แล้ว → แก้ไข, ไม่มี → เพิ่มใหม่; แถวที่ผิดจะถูกข้ามและรายงานกลับ
+    // นำเข้าหลายแถว: มีเลขที่ใบสมัครอยู่แล้ว → แก้ไขเฉพาะคอลัมน์ที่มีในไฟล์ (คอลัมน์อื่นคงค่าเดิม),
+    // ไม่มี → เพิ่มใหม่; แถวที่ผิดจะถูกข้ามและรายงานกลับ
     importRows(rows) {
       if (!Array.isArray(rows) || rows.length === 0) throw new HttpError(400, 'ไม่พบข้อมูลที่จะนำเข้า');
       if (rows.length > 5000) throw new HttpError(400, 'นำเข้าได้ครั้งละไม่เกิน 5,000 แถว');
-      const findByApp = db.prepare('SELECT id FROM students WHERE application_no = :application_no');
+      const findByApp = db.prepare('SELECT * FROM students WHERE application_no = :application_no');
       const insert = db.prepare(INSERT_SQL);
       const update = db.prepare(UPDATE_SQL);
       const result = { inserted: 0, updated: 0, failed: [] };
       db.exec('BEGIN');
       try {
-        for (const { rowNumber, data } of rows) {
-          const s = clean(data);
+        for (const { rowNumber, data = {} } of rows) {
+          const appNo = clean(data).application_no;
+          const existing = appNo ? findByApp.get({ application_no: appNo }) : null;
+          const s = clean(existing ? { ...existing, ...data } : data);
           const errors = validate(s);
           if (Object.keys(errors).length) { result.failed.push({ rowNumber, errors }); continue; }
           try {
-            const existing = findByApp.get({ application_no: s.application_no });
             if (existing) { update.run({ ...s, id: existing.id }); result.updated++; }
             else { insert.run(s); result.inserted++; }
           } catch (err) {

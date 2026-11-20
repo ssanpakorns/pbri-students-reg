@@ -12,7 +12,9 @@
     "db:seed": "npm run db:seed -w server",
     "build": "npm run build -w client",
     "start": "npm run start -w server",
-    "build:pages": "npm run build:pages -w client"
+    "build:pages": "npm run build:pages -w client",
+    "test:api": "node scripts/api-contract-test.mjs",
+    "pack:php-api": "node scripts/pack-php-api.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

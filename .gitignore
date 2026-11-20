@@ -7,3 +7,8 @@ server/db/*.db-*
 *.xlsx
 *.xls
 *.csv
+
+# PHP API: ค่าตั้งและฐานข้อมูลบนเครื่องจริง
+api-php/config.php
+api-php/data/
+dist-php-api/

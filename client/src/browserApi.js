@@ -121,6 +121,7 @@ async function call(fn, write = false) {
 }
 
 export const browserApi = {
+  me: async () => ({ role: 'admin', display_name: null, noAuth: true }),
   options: () => call((r) => r.options()),
   stats: () => call((r) => r.stats()),
   listStudents: (params) => call((r) => r.list(params)),

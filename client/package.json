@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "build:pages": "vite build --mode pages",
-    "preview:pages": "vite preview --mode pages"
+    "preview:pages": "vite preview --mode pages",
+    "dev:php": "vite --mode phpdev --port 5174 --strictPort"
   },
   "dependencies": {
     "react": "^19.1.0",

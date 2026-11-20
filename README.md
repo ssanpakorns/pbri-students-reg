@@ -30,6 +30,30 @@ npm run dev       # เปิด API (พอร์ต 3001) และหน้�
 > ⚠️ ไฟล์ Excel จริงมีข้อมูลส่วนบุคคล (เลขบัตรประชาชน ที่อยู่ เบอร์โทร) — อย่า commit ขึ้น repo (`.gitignore` กันไฟล์ `*.xlsx` ไว้แล้ว)
 > และ `server/db/seed.sql` ต้องเป็นข้อมูลสมมติเท่านั้น
 
+## PHP API (สำหรับติดตั้งบน server จริง)
+โฟลเดอร์ `api-php/` คือ API เวอร์ชัน PHP + SQLite ที่มีเส้นและรูปแบบข้อมูลเหมือน Express ทุกอย่าง และเพิ่ม:
+- **ระบบ login** (`POST /auth/login`, `GET /auth/me`, `POST /auth/logout`) แบบ Bearer token, ล็อกชั่วคราวเมื่อ login ผิดหลายครั้ง
+- **สิทธิ์:** `admin` / `editor` ทำได้ทุกอย่าง, `viewer` ดูอย่างเดียว (เลขบัตรแสดงแค่ 4 หลักท้าย, ส่งออกไม่ได้)
+- **audit log** บันทึกว่าใครทำอะไรเมื่อไร, จำกัด CORS ตาม `config.php`, เก็บฐานข้อมูลนอก web root
+
+```powershell
+npm run pack:php-api      # รวมไฟล์พร้อมอัปโหลดไว้ที่ dist-php-api/students-api/
+```
+ขั้นตอนติดตั้งทั้งหมดอยู่ใน [api-php/DEPLOY.md](api-php/DEPLOY.md)
+
+ทดสอบในเครื่อง (ต้องมี PHP 8+ ที่มี pdo_sqlite เช่นจาก XAMPP):
+```powershell
+php api-php/bin/create-user.php editor1 editor
+php -S 127.0.0.1:8081 -t api-php/public api-php/public/index.php
+```
+แล้วรัน `npm run dev:php -w client` (หน้าเว็บที่ http://localhost:5174 เรียก PHP API — ต้องมี `http://localhost:5174` ใน `allowed_origins` ของ `api-php/config.php`)
+
+ตรวจว่า API ทั้งสองเวอร์ชันทำงานตรงกัน (เพิ่ม/แก้/ค้นหา/นำเข้า/สิทธิ์ ฯลฯ — สร้างข้อมูลทดสอบแล้วลบทิ้งเอง):
+```powershell
+npm run test:api -- http://localhost:3001/api
+npm run test:api -- http://127.0.0.1:8081 <editorUser> <editorPass> [viewerUser viewerPass]
+```
+
 ## GitHub Pages (โหมดสาธิต)
 เว็บสาธิต: https://ssanpakorns.github.io/pbri-students-reg/
 

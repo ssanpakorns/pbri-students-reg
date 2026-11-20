@@ -1,0 +1,12 @@
+# Apache: ส่งทุก request ไปที่ index.php และส่ง header Authorization ต่อให้ PHP
+Require all granted
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+<IfModule mod_cgi.c>
+  CGIPassAuth On
+</IfModule>
+Options -Indexes

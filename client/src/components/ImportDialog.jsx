@@ -47,7 +47,8 @@ export default function ImportDialog({ onImport, onClose }) {
     <div className="space-y-4">
       <p className="text-sm opacity-80">
         ใช้ไฟล์ .xlsx ที่มีหัวตารางแถวแรกตามรูปแบบเดียวกับไฟล์ส่งออก (เลขที่ใบสมัคร, ชื่อ, นามสกุล ... ) —
-        ถ้าเลขที่ใบสมัครมีอยู่แล้วจะ<b>อัปเดต</b>ข้อมูลเดิม ถ้ายังไม่มีจะ<b>เพิ่มใหม่</b>
+        ถ้าเลขที่ใบสมัครมีอยู่แล้วจะ<b>อัปเดต</b>เฉพาะคอลัมน์ที่มีในไฟล์ (คอลัมน์ที่ไม่มีในไฟล์คงค่าเดิม)
+        ถ้ายังไม่มีจะ<b>เพิ่มใหม่</b>
       </p>
 
       <input type="file" accept=".xlsx" className="file-input w-full" onChange={pick} disabled={busy} />
