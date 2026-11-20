@@ -1,0 +1,16 @@
+{
+  "name": "server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --no-warnings=ExperimentalWarning src/index.js",
+    "start": "node --no-warnings=ExperimentalWarning src/index.js",
+    "db:init": "node --no-warnings=ExperimentalWarning src/init-db.js",
+    "db:seed": "node --no-warnings=ExperimentalWarning src/init-db.js --seed"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}
